@@ -1,0 +1,17 @@
+{
+  "name": "db-auth",
+  "version": "1.0.0",
+  "description": "用于数据库数据权限建立的基础工具",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/testMain.ts"
+  },
+  "author": "SuperGigity",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  }
+}

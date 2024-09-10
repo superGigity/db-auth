@@ -1,0 +1,1 @@
+export type TFieldAuth = 'show' | 'hideShow' | 'noPermission';
