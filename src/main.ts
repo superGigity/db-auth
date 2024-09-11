@@ -1,3 +1,4 @@
+import { DbViewAuth } from "./core/db-view";
 import { TFieldAuth } from "./type/auth";
 
 export class DbAuth{
@@ -21,12 +22,26 @@ export class DbAuth{
         this.#field[tableName][fieldName] = rules;
     }
 
-    getExecSql(sqlCode:string){
+    getExecSql(sqlCode:string,actionTable:string[]){
         let resultSql = sqlCode;
-        const authTable = 'user_view';
+        const cacheView:Record<string,DbViewAuth | null> = {};
 
-        for(let key in this.#condition){
-            resultSql = resultSql.replace(new RegExp(key,'g'),`${authTable}`);
+        // Created View
+        for(const tableName of actionTable){
+            const condition = this.#condition[tableName];
+            const field = this.#field[tableName];
+            if(!condition && !field){
+                cacheView[tableName] = null;
+            }else{
+                cacheView[tableName] = new DbViewAuth(tableName);
+            }
+        }
+        // Replace Sql
+        for(const key in cacheView){
+            const item = cacheView[key];
+            if(item){
+                resultSql = resultSql.replace(new RegExp(key,'g'),item.startAuthView());
+            }
         }
         return resultSql;
     }
