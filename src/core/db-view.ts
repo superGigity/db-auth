@@ -6,8 +6,11 @@ import { TFieldAuth } from "../type/auth";
 */
 export class DbViewAuth{
     #fieldAuthSql:String = '*';
-    constructor(tableName:string,querAction: () => boolean){
-        
+    #tableName:string;
+    #queryAction:(sql:string)=>boolean;
+    constructor(tableName:string,querAction: (sql:string) => boolean){
+        this.#tableName = tableName;
+        this.#queryAction = querAction;
     }
     setFieldAuth(fieldAuth:Record<string,TFieldAuth>){
         const setFieldSql = [];
@@ -15,13 +18,15 @@ export class DbViewAuth{
         for(const key in fieldAuth){
             const item = fieldAuth[key];
             if(item === 'noPermission')return;
-            
+
+            setFieldSql.push(item);
         }
+
+        this.#fieldAuthSql = setFieldSql.join(',');
     }
     generateView(){
-        const viewSql = `CREATE VIEW AS SELECT FROM WHERE`;
+        const viewSql = `CREATE VIEW AS SELECT ${this.#fieldAuthSql} FROM ${this.#tableName}`;
+        console.log(viewSql,this.#queryAction(viewSql));
+        return '111';
     }
-    startAuthView(){
-        return '312313123';
-    }
-}
+} 

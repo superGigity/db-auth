@@ -33,14 +33,15 @@ export class DbAuth{
             if(!condition && !field){
                 cacheView[tableName] = null;
             }else{
-                cacheView[tableName] = new DbViewAuth(tableName);
+                cacheView[tableName] = new DbViewAuth(tableName,()=>true);
             }
         }
+        const patchTable = (target:string) => new RegExp(`${target}(![.]?![^ .\`])`, 'g');
         // Replace Sql
         for(const key in cacheView){
             const item = cacheView[key];
             if(item){
-                resultSql = resultSql.replace(new RegExp(key,'g'),item.startAuthView());
+                resultSql = resultSql.replace(patchTable(key),item.generateView());
             }
         }
         return resultSql;
