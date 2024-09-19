@@ -1,1 +1,5 @@
-export type TFieldAuth = 'show' | 'hideShow' | 'noPermission';
+export enum TFieldAuth {
+    show = 'show',
+    hide = 'hide',
+    noAuth = 'noAuth'
+};

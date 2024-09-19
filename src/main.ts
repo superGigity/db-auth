@@ -2,9 +2,12 @@ import { DbViewAuth } from "./core/db-view";
 import { TFieldAuth } from "./type/auth";
 
 export class DbAuth{
+    #queryAction:()=>Promise<boolean>;
     #condition:Record<string,string[]> = {};
-    #field:Record<string,Record<string,string>> = {};
-
+    #field:Record<string,Record<string,TFieldAuth>> = {};
+    constructor(queryAction:()=>Promise<boolean>){
+        this.#queryAction = queryAction;
+    }
     setCondition(tableName:string,rules:string[]){
         if(!this.#condition[tableName]){
             this.#condition[tableName] = [];
@@ -22,7 +25,7 @@ export class DbAuth{
         this.#field[tableName][fieldName] = rules;
     }
 
-    getExecSql(sqlCode:string,actionTable:string[]){
+    async getExecSql(sqlCode:string,actionTable:string[]){
         let resultSql = sqlCode;
         const cacheView:Record<string,DbViewAuth | null> = {};
 
@@ -33,15 +36,17 @@ export class DbAuth{
             if(!condition && !field){
                 cacheView[tableName] = null;
             }else{
-                cacheView[tableName] = new DbViewAuth(tableName,()=>true);
+                cacheView[tableName] = new DbViewAuth(tableName,this.#queryAction);
+                cacheView?.[tableName]?.setCondition(condition);
+                cacheView?.[tableName]?.setFieldAuth(field)
             }
         }
-        const patchTable = (target:string) => new RegExp(`${target}(![.]?![^ .\`])`, 'g');
+        const patchTable = (target:string) => new RegExp(`(${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=[\\s\`;]|$)`, 'g');
         // Replace Sql
         for(const key in cacheView){
             const item = cacheView[key];
             if(item){
-                resultSql = resultSql.replace(patchTable(key),item.generateView());
+                resultSql = resultSql.replace(patchTable(key),await item.generateView());
             }
         }
         return resultSql;

@@ -1,7 +1,15 @@
 import { DbAuth } from "./main";
+import { TFieldAuth } from "./type/auth";
 
-const sqlAuth = new DbAuth();
+const sqlAuth = new DbAuth(async ()=>true);
 
-sqlAuth.setCondition('user',['user.age > 18','user.sex = 1']);
+sqlAuth.setFieldAuth('user_role', 'age',TFieldAuth.show);
+sqlAuth.setFieldAuth('user_role', 'sex',TFieldAuth.show);
 
-console.log(sqlAuth.getExecSql(`select * from \`user\` as user_tables;`,['user'])); 
+sqlAuth.setCondition('user_role',['user_role.age > 18','user_role.sex = 1']);
+
+sqlAuth.setFieldAuth('user', 'number',TFieldAuth.show);
+
+(async function(){
+    console.log(await sqlAuth.getExecSql(`select user_tables.age from \`user_role\` as user_tables left join user;`,['user_role','user'])); 
+})();
