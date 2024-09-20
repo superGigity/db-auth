@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { TFieldAuth } from "../type/auth";
+import { MySQLError } from "../type/mysql";
 
 /*
     视图管理类,添加视图,返回视图唯一ID
@@ -20,8 +21,14 @@ export class DbViewAuth{
 
         for(const key in fieldAuth){
             const item = fieldAuth[key];
-            if(item === TFieldAuth.noAuth)return;
-
+            if(item === TFieldAuth.noAuth){
+                continue;
+            }
+            if(item === TFieldAuth.readOnly){
+                // set field readonly
+                setFieldSql.push(`'' + ${key} as ${key}`);
+                continue;
+            }
             setFieldSql.push(key);
         }
 
@@ -39,16 +46,43 @@ export class DbViewAuth{
     }
     async generateView(){
         const viewId = this.generateViewId();
-        let viewSql = `CREATE VIEW \`${viewId}\` AS SELECT ${this.#fieldAuthSql} FROM ${this.#tableName}`;
+        let viewSql = `
+            CREATE VIEW \`${viewId}\` AS SELECT ${this.#fieldAuthSql} FROM ${this.#tableName}
+        `;
         if(this.#condition){
             viewSql += ` WHERE ${this.#condition}`;
         }
-        console.log(viewSql);
-        const AddView = await this.#queryAction(viewSql);
 
-        if(AddView){
-            return viewId;
+        viewSql += ` WITH CASCADED CHECK OPTION`;
+
+
+        try{
+            const dropViewResult = await this.#queryAction(`DROP VIEW IF EXISTS \`${viewId}\``);
+
+            if(!dropViewResult){
+                return this.#tableName;
+            }
+            
+            const addViewResult = await this.#queryAction(viewSql);
+            
+            return addViewResult ? viewId : this.#tableName;
+            
+        }catch(error){
+            throw new Error(this.resultError(error as MySQLError));
         }
-        return this.#tableName;
+        
+    }
+
+    resultError(sqlError:MySQLError){
+        switch (sqlError.code) {
+            case 'ER_TABLEACCESS_DENIED_ERROR':
+                return 'You do not have permission to access the corresponding table';
+            case 'ER_TABLE_EXISTS_ERROR':
+                return 'Failed to build permission view';
+            case 'ER_VIEW_INVALID':
+                return 'Permission view has expired';
+            default:
+                return sqlError.message;
+        }
     }
 } 

@@ -1,11 +1,13 @@
 import { DbViewAuth } from "./core/db-view";
 import { TFieldAuth } from "./type/auth";
+import { MySQLError } from "./type/mysql";
+import { TableAuth } from "./type/table";
 
 export class DbAuth{
-    #queryAction:()=>Promise<boolean>;
+    #queryAction:(sqlCode:string)=>Promise<boolean>;
     #condition:Record<string,string[]> = {};
     #field:Record<string,Record<string,TFieldAuth>> = {};
-    constructor(queryAction:()=>Promise<boolean>){
+    constructor(queryAction:(sqlCode:string)=>Promise<boolean>){
         this.#queryAction = queryAction;
     }
     setCondition(tableName:string,rules:string[]){
@@ -15,17 +17,20 @@ export class DbAuth{
         this.#condition[tableName] = rules;
     }
 
-    setFieldAuth(tableName:string,fieldName:string,rules:TFieldAuth){
-        if(!this.#field[tableName]){
-            this.#field[tableName] = {};
+    setFieldAuth<T extends TableAuth>(table:T,fieldHash:{
+        [k in keyof T]?:TFieldAuth
+    }){
+        if(!this.#field[table.tableName]){
+            this.#field[table.tableName] = {};
         }
-        if(!this.#field[tableName][fieldName]){
-            this.#field[tableName][fieldName] = rules;
+        for(const key in fieldHash){
+            const item = fieldHash[key];
+            if(item)
+                this.#field[table.tableName][key] = item;
         }
-        this.#field[tableName][fieldName] = rules;
     }
 
-    async getExecSql(sqlCode:string,actionTable:string[]){
+    async getAuthSql(sqlCode:string,actionTable:string[]){
         let resultSql = sqlCode;
         const cacheView:Record<string,DbViewAuth | null> = {};
 
@@ -46,9 +51,35 @@ export class DbAuth{
         for(const key in cacheView){
             const item = cacheView[key];
             if(item){
-                resultSql = resultSql.replace(patchTable(key),await item.generateView());
+                resultSql = resultSql.replace(patchTable(key),'`'+ await item.generateView() +'`');
             }
         }
         return resultSql;
+    }
+
+    resultError(error:MySQLError,throwError:boolean = true){
+        // 根据报错和字段权限返回正确的 错误信息
+        console.log(error.message);
+        console.log(error.code);
+        function resultError(errorMsg:string){
+            if(throwError){
+                throw new Error(errorMsg);
+            }
+
+            return { errorMsg: errorMsg }
+        }
+        switch (error.code) {
+            case 'ER_BAD_FIELD_ERROR':
+                const regex = /Unknown column '(.*)' in/i;
+                const match = error.message.match(regex);
+                const fieldName = match?.[1] || '';
+                return resultError(`You do not have access to the field '${fieldName}'`)
+            case 'ER_NONUPDATEABLE_COLUMN':
+                return resultError(`The field is read-only and cannot be modified`);
+            case 'ER_VIEW_CHECK_FAILED':
+                return resultError('You do not have the authority to perform this operation');
+            default:
+                return resultError(error.message);
+        }
     }
 }

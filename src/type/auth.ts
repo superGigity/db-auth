@@ -1,5 +1,6 @@
 export enum TFieldAuth {
-    show = 'show',
+    allow = 'allow',
     hide = 'hide',
+    readOnly = 'readOnly',
     noAuth = 'noAuth'
 };

@@ -1,15 +1,56 @@
+import { createConnection } from "mysql2/promise";
 import { DbAuth } from "./main";
 import { TFieldAuth } from "./type/auth";
+import { MySQLError } from "./type/mysql";
+import { TableAuth } from "./type/table";
 
-const sqlAuth = new DbAuth(async ()=>true);
+class userModal implements TableAuth{
+    tableName: string = 'user';
 
-sqlAuth.setFieldAuth('user_role', 'age',TFieldAuth.show);
-sqlAuth.setFieldAuth('user_role', 'sex',TFieldAuth.show);
+    id: number | undefined;
 
-sqlAuth.setCondition('user_role',['user_role.age > 18','user_role.sex = 1']);
+    username:string | undefined;
+    
+    password:string | undefined;
 
-sqlAuth.setFieldAuth('user', 'number',TFieldAuth.show);
+    age:number | undefined;
 
-(async function(){
-    console.log(await sqlAuth.getExecSql(`select user_tables.age from \`user_role\` as user_tables left join user;`,['user_role','user'])); 
-})();
+    sex:number | undefined;
+}
+async function queryData() {
+  const connection = await createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: 'root',
+    database: 'test_db_auth'
+  });
+  const sqlAuth = new DbAuth(async (viewSql:string)=>{
+    const [ rows ] = await connection.execute(viewSql);
+    return (rows as any).serverStatus == 2 ? true : false;
+  });
+  
+  sqlAuth.setFieldAuth<userModal>(new userModal(),{
+      'id': TFieldAuth.allow,
+      'age': TFieldAuth.allow,
+      'username' : TFieldAuth.allow,
+      'password' : TFieldAuth.allow,
+      'sex' : TFieldAuth.noAuth
+  });
+
+  // 只能管理age 大于400的数据
+  sqlAuth.setCondition('user',['age > 400']);
+  const authSql = await sqlAuth.getAuthSql('select sex from user where age < 400',[
+    'user'
+  ]);
+  try{
+    const [ row ] = await connection.query(authSql);
+    console.log(row);
+  }catch(error){
+    sqlAuth.resultError(error as MySQLError);
+  }
+  
+  
+  connection.destroy();
+}
+
+queryData();
