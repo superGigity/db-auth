@@ -46,7 +46,7 @@ export class DbAuth{
                 cacheView?.[tableName]?.setFieldAuth(field)
             }
         }
-        const patchTable = (target:string) => new RegExp(`(${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=[\\s\`;]|$)`, 'g');
+        const patchTable = (target: string) => new RegExp(`(?<!['"\s])(${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=[\\s\`;\.]|$)`, 'g');
         // Replace Sql
         for(const key in cacheView){
             const item = cacheView[key];

@@ -39,7 +39,7 @@ async function queryData() {
 
   // 只能管理age 大于400的数据
   sqlAuth.setCondition('user',['age > 400']);
-  const authSql = await sqlAuth.getAuthSql('select sex from user where age < 400',[
+  const authSql = await sqlAuth.getAuthSql('select user.sex from user',[
     'user'
   ]);
   try{
