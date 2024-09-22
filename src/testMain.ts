@@ -17,6 +17,13 @@ class userModal implements TableAuth{
 
     sex:number | undefined;
 }
+class roleModal implements TableAuth{
+    tableName: string = 'role';
+
+    id: number | undefined;
+
+    username:string | undefined;
+}
 async function queryData() {
   const connection = await createConnection({
     host: 'localhost',
@@ -28,23 +35,26 @@ async function queryData() {
     const [ rows ] = await connection.execute(viewSql);
     return (rows as any).serverStatus == 2 ? true : false;
   });
-  
+  sqlAuth.setFieldAuth<roleModal>(new roleModal(),{
+    'id': TFieldAuth.allow,
+    'username': TFieldAuth.allow
+  })
   sqlAuth.setFieldAuth<userModal>(new userModal(),{
       'id': TFieldAuth.allow,
       'age': TFieldAuth.allow,
       'username' : TFieldAuth.allow,
       'password' : TFieldAuth.allow,
-      'sex' : TFieldAuth.noAuth
+      'sex' : TFieldAuth.readOnly
   });
+  
 
-  // 只能管理age 大于400的数据
-  sqlAuth.setCondition('user',['age > 400']);
-  const authSql = await sqlAuth.getAuthSql('select user.sex from user',[
-    'user'
-  ]);
+  const authSql = await sqlAuth.getAuthSql('select user.username from user limit 10',['user']); 
+  console.log(authSql);
   try{
     const [ row ] = await connection.query(authSql);
-    console.log(row);
+    console.log(sqlAuth.resultData(row as any,{
+      'username':{ tableName:'role',handle:(data)=> data.replace(/.(?=.{2})/g, '*') }
+    }));
   }catch(error){
     sqlAuth.resultError(error as MySQLError);
   }
