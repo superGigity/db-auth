@@ -3,8 +3,9 @@ import { TFieldAuth } from "./type/auth";
 import { MySQLError } from "./type/mysql";
 import { TableAuth } from "./type/table";
 
+type tableField = `${string}.${string}`
 type patchDataRule = {
-    [key in string] : { tableName:string,handle:(data:any)=>any }
+    [key in string] : { field:tableField,handle?:(data:any)=>any }
 }
 export class DbAuth{
     #queryAction:(sqlCode:string)=>Promise<boolean>;
@@ -80,17 +81,25 @@ export class DbAuth{
             return resultNoAuthField;
         }
         const noAuthFieldArray = noAuthField(this.#field);
-        console.log(noAuthFieldArray);
         const resultData = data.map((item) => {
-            for(const noAuthItem of noAuthFieldArray){
-                if(rules[noAuthItem.field] && rules[noAuthItem.field].tableName === noAuthItem.table){
-                    // has patch rules.
-                    item[noAuthItem.field] = rules[noAuthItem.field].handle(item[noAuthItem.field]);
-                    break;
+            for(const dataKey in item){
+                const dataItem = item[dataKey];
+
+                if(!rules[dataKey]){
+                    const findItem = noAuthFieldArray.filter((noAuthFieldItem)=> noAuthFieldItem.field === dataKey);
+                    item[dataKey] = findItem.length ? '' : dataItem;
+                    continue;
                 }
 
-                if(!rules[noAuthItem.field] && item[noAuthItem.field]){
-                    item[noAuthItem.field] = '';
+                const rulesAction = rules[dataKey];
+                const correspondingField = rulesAction.field.split('.');
+                const [ tableName,fieldName ] = correspondingField;
+                
+                const findItem = noAuthFieldArray.filter((noAuthFieldItem)=>noAuthFieldItem.table === tableName && noAuthFieldItem.field === fieldName);
+                
+                if(findItem.length){
+                    // Found in the corresponding unauthorized table
+                    item[dataKey] = rulesAction?.handle?.(dataItem) || '';
                 }
             }
             return item;
@@ -201,5 +210,12 @@ export class DbAuth{
             }
         }
         return resultField;
+    }
+
+    async destroy(){
+        for(const key in this.#viewManger){
+            const viewManger = this.#viewManger[key];
+            await viewManger?.destroy();
+        }
     }
 }

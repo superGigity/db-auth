@@ -1,4 +1,4 @@
-import { createConnection } from "mysql2/promise";
+import { createConnection, type RowDataPacket } from "mysql2/promise";
 import { DbAuth } from "./main";
 import { TFieldAuth } from "./type/auth";
 import { MySQLError } from "./type/mysql";
@@ -44,17 +44,16 @@ async function queryData() {
       'age': TFieldAuth.allow,
       'username' : TFieldAuth.allow,
       'password' : TFieldAuth.allow,
-      'sex' : TFieldAuth.readOnly
+      'sex' : TFieldAuth.readOnly 
   });
   
 
-  const authSql = await sqlAuth.getAuthSql('select user.username from user limit 10',['user']); 
-  console.log(authSql);
+  const authSql = await sqlAuth.getAuthSql('select user.username as testName from user,role limit 10',['user','role']); 
   try{
-    const [ row ] = await connection.query(authSql);
-    console.log(sqlAuth.resultData(row as any,{
-      'username':{ tableName:'role',handle:(data)=> data.replace(/.(?=.{2})/g, '*') }
-    }));
+    const [ row ] = await connection.query<RowDataPacket[]>(authSql);
+    const authData = sqlAuth.resultData(row);
+    console.log(authData);
+    await sqlAuth.destroy();
   }catch(error){
     sqlAuth.resultError(error as MySQLError);
   }

@@ -72,6 +72,16 @@ export class DbViewAuth{
         }
         
     }
+    async destroy(){
+        const viewId = this.generateViewId();
+        const dropViewResult = await this.#queryAction(`DROP VIEW IF EXISTS \`${viewId}\``);
+
+        if(!dropViewResult){
+            throw new Error(`Delete view failed,ViewId: ${viewId}`);
+        }
+
+        return true;
+    }
 
     resultError(sqlError:MySQLError){
         switch (sqlError.code) {
