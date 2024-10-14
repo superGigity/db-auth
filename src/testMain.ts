@@ -1,3 +1,3 @@
-const parser = require('js-sql-parser');
-const ast = parser.parse('select table.a as aa,table.b from table');
-console.log(ast);
+import { parse } from "./sql-parse/terms-parse";
+
+parse('select * from user where id = 1');
