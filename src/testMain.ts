@@ -1,3 +1,3 @@
 import { parse } from "./sql-parse/terms-parse";
 
-parse('select * from user where id = 1');
+parse('select (select username from user) from (select * from user) cuser where id = 1');

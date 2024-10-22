@@ -1,35 +1,38 @@
-import { selectParse } from "./select";
-import type { sqlEnum } from "./type/sql-type";
-import { codeIterator } from "./util/code-iterator";
+
+import { TokenEnum, TokenEnumType } from "./token/main";
+// import { codeIterator } from "./util/code-iterator";
 
 export interface sqlAst{
-  type: sqlEnum;
+  type: TokenEnumType;
   value: string;
   otherValue: string;
   children: sqlAst[];
-  parameter: Array<string | sqlAst>
+  start: number;
+  end: number;
 }
 export const parse = function(code: string){
-  const astTree: sqlAst[] = [];
-  const currentCodeIterator = new codeIterator(code);
-  
-  console.time("parse");
-  while(!currentCodeIterator.isStop()){
-    console.log(currentCodeIterator.lineCode.toUpperCase());
-    switch(currentCodeIterator.lineCode.toUpperCase()){
-      case 'SELECT':
-        currentCodeIterator.freere();
-        selectParse(currentCodeIterator,astTree);
-        break;
-      case ' ':
-        currentCodeIterator.freere();
-        currentCodeIterator.next();
-        break;
-      default:
-        currentCodeIterator.next();
-        break;
-    }
+  const tokenTree = [];
+  console.time('Run Match Token');
+  for(const key  in TokenEnum){
+    const item = TokenEnum[key as keyof typeof TokenEnum];
+    const match = new RegExp(item,'gi');
+    const matchToken = Array.from(code.matchAll(match));
+    const pushAst: sqlAst[] = matchToken.map((v)=>{
+      return {
+        type: key as TokenEnumType,
+        value: '',
+        otherValue:'',
+        children:[],
+        start:v.index,
+        end:0
+      }
+    });
+
+    tokenTree.push(...pushAst);
   }
-  console.timeEnd('parse');
-  console.log(astTree);
+  const sortTokenTree = tokenTree.sort((a,b)=>{
+    return a.start - b.start;
+  });
+  console.log(sortTokenTree);
+  console.timeEnd('Run Match Token');
 }
